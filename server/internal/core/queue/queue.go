@@ -14,7 +14,7 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/your-username/go-mux-backend-template/pkg"
+	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
 const EmailQueue = "email_jobs"

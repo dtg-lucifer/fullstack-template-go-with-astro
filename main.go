@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"github.com/your-username/go-mux-backend-template/config"
-	"github.com/your-username/go-mux-backend-template/internal/server"
-	"github.com/your-username/go-mux-backend-template/pkg"
+	"github.com/your-username/go-mux-backend-template/server"
+	"github.com/your-username/go-mux-backend-template/server/config"
+	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
 func main() {
@@ -34,7 +34,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	srv := server.New(cfg, logger)
+	// WebFS() is provided by either fs_prod.go (!dev) or fs_dev.go (dev tag).
+	// In production it serves from the embedded binary; in dev it reads from disk.
+	srv := server.New(cfg, logger, WebFS())
 
 	if err := srv.Setup(context.Background()); err != nil {
 		logger.Error("Failed to set up server", "error", err)

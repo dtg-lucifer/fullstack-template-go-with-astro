@@ -7,10 +7,10 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/your-username/go-mux-backend-template/internal/core/cache"
-	"github.com/your-username/go-mux-backend-template/internal/core/events"
-	"github.com/your-username/go-mux-backend-template/internal/modules/auth"
-	"github.com/your-username/go-mux-backend-template/internal/modules/health"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/cache"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/events"
+	"github.com/your-username/go-mux-backend-template/server/internal/modules/auth"
+	"github.com/your-username/go-mux-backend-template/server/internal/modules/health"
 )
 
 // Register mounts every module's routes onto the API subrouter.

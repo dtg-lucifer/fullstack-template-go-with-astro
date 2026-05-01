@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/your-username/go-mux-backend-template/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
 )
 
 // rateLimitEntry tracks the request count and window start time for a single IP.

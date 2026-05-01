@@ -3,7 +3,7 @@ package middlewares
 import (
 	"net/http"
 
-	"github.com/your-username/go-mux-backend-template/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
 )
 
 // Validatable is the interface any request input struct must satisfy to be used

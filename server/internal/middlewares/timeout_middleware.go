@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/your-username/go-mux-backend-template/internal/utils"
-	"github.com/your-username/go-mux-backend-template/pkg"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
 // TimeoutMiddleware wraps each request in a context with the given deadline.

@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"github.com/your-username/go-mux-backend-template/internal/core/events"
-	"github.com/your-username/go-mux-backend-template/internal/utils"
-	"github.com/your-username/go-mux-backend-template/pkg"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/events"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
 // Hub maintains the set of active WebSocket clients and broadcasts messages to them.

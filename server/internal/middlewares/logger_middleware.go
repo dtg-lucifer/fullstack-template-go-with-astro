@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/your-username/go-mux-backend-template/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
 )
 
 // LoggerMiddleware logs every HTTP request with method, path, status code, duration, and

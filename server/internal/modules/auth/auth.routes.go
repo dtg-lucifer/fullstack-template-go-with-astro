@@ -5,8 +5,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/your-username/go-mux-backend-template/internal/core/events"
-	"github.com/your-username/go-mux-backend-template/internal/middlewares"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/events"
+	"github.com/your-username/go-mux-backend-template/server/internal/middlewares"
 )
 
 // RegisterRoutes mounts all auth routes onto the provided subrouter.

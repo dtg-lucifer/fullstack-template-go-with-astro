@@ -4,6 +4,7 @@ CMD_PATH    := .
 BIN_DIR     := ./bin
 BIN_FILE    := $(BIN_DIR)/$(APP_NAME)
 LOGS_DIR    := ./logs
+WEB_DIR     := ./web
 
 ## ── Tools ─────────────────────────────────────────────────────────────────────
 GO              := go
@@ -14,7 +15,7 @@ AIR             := air
 
 ## ── DB config (override via env or .env) ──────────────────────────────────────
 DB_URL          ?= postgres://postgres:postgres@localhost:5432/app_db?sslmode=disable
-MIGRATIONS_DIR  ?= internal/db/migrations
+MIGRATIONS_DIR  ?= server/internal/db/migrations
 
 ## ── Flags ─────────────────────────────────────────────────────────────────────
 GO_FILES := $(shell find . -type f -name '*.go' -not -path "./vendor/*")
@@ -45,15 +46,26 @@ install-migrate:
 install-lint:
 	@echo ">> Installing golangci-lint…"
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
-		| sh -s -- -b $$(go env GOPATH)/bin v2.11.4
+		| sh -s -- -b $(go env GOPATH)/bin v2.11.4
 
 # ── Build ──────────────────────────────────────────────────────────────────────
+# Full build: compile the frontend first, then embed it into the Go binary.
 .PHONY: build
-build: clean
-	@echo ">> Building binary…"
+build: build-web build-server
+	@echo ">> Single binary ready: $(BIN_FILE)"
+
+.PHONY: build-server
+build-server: clean-bin
+	@echo ">> Building Go binary…"
 	@mkdir -p $(BIN_DIR)
 	$(GO) build -o $(BIN_FILE) $(CMD_PATH)
 	@echo ">> Binary: $(BIN_FILE)"
+
+.PHONY: build-web
+build-web:
+	@echo ">> Building Astro frontend…"
+	@cd $(WEB_DIR) && bun run build
+	@echo ">> Frontend built → web/dist/"
 
 # ── Run ────────────────────────────────────────────────────────────────────────
 .PHONY: run
@@ -146,8 +158,11 @@ migrate-new:
 
 # ── Clean ──────────────────────────────────────────────────────────────────────
 .PHONY: clean
-clean:
-	@echo ">> Cleaning build artifacts…"
-	@rm -rf $(BIN_DIR)
+clean: clean-bin
 	@echo ">> Removing log files…"
 	@rm -rf $(LOGS_DIR)
+
+.PHONY: clean-bin
+clean-bin:
+	@echo ">> Cleaning build artifacts…"
+	@rm -rf $(BIN_DIR)

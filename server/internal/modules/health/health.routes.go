@@ -9,8 +9,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/your-username/go-mux-backend-template/internal/core/cache"
-	"github.com/your-username/go-mux-backend-template/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/cache"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
 )
 
 // RegisterRoutes mounts the health check route onto the provided router.

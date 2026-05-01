@@ -14,16 +14,17 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/your-username/go-mux-backend-template/config"
-	"github.com/your-username/go-mux-backend-template/internal/core/cache"
-	"github.com/your-username/go-mux-backend-template/internal/core/events"
-	"github.com/your-username/go-mux-backend-template/internal/core/queue"
-	"github.com/your-username/go-mux-backend-template/internal/core/realtime"
-	"github.com/your-username/go-mux-backend-template/internal/db"
-	"github.com/your-username/go-mux-backend-template/internal/db/repository"
-	"github.com/your-username/go-mux-backend-template/internal/middlewares"
-	"github.com/your-username/go-mux-backend-template/internal/modules"
-	"github.com/your-username/go-mux-backend-template/pkg"
+
+	"github.com/your-username/go-mux-backend-template/server/config"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/cache"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/events"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/queue"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/realtime"
+	"github.com/your-username/go-mux-backend-template/server/internal/db"
+	"github.com/your-username/go-mux-backend-template/server/internal/db/repository"
+	"github.com/your-username/go-mux-backend-template/server/internal/middlewares"
+	"github.com/your-username/go-mux-backend-template/server/internal/modules"
+	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
 // Server owns every long-lived resource in the application.
@@ -32,6 +33,7 @@ type Server struct {
 	cfg       *config.Config
 	logger    *pkg.Logger
 	startTime time.Time
+	webHandler http.Handler // frontend handler; nil disables static file serving
 
 	pool    *pgxpool.Pool
 	redis   cache.Cache
@@ -43,11 +45,14 @@ type Server struct {
 }
 
 // New creates a Server. Call Setup() then Start().
-func New(cfg *config.Config, logger *pkg.Logger) *Server {
+// Pass the web handler from WebFS() in main; pass nil to disable static file
+// serving (useful in API-only mode).
+func New(cfg *config.Config, logger *pkg.Logger, webHandler http.Handler) *Server {
 	return &Server{
-		cfg:       cfg,
-		logger:    logger,
-		startTime: time.Now(),
+		cfg:        cfg,
+		logger:     logger,
+		startTime:  time.Now(),
+		webHandler: webHandler,
 	}
 }
 
@@ -259,6 +264,15 @@ func (s *Server) setupRouter() {
 	if s.hub != nil {
 		router.Handle(s.cfg.Realtime.WebSocket.Path, s.hub)
 		s.logger.Info("[WS] WebSocket endpoint mounted", "path", s.cfg.Realtime.WebSocket.Path)
+	}
+
+	// ── Frontend (SPA fallback) ───────────────────────────────────────────────
+	// In production the handler serves from the embedded FS; in dev it reads
+	// from web/dist on disk. Either way, unknown paths fall back to index.html
+	// so client-side routing works correctly.
+	if s.webHandler != nil {
+		router.PathPrefix("/").Handler(s.webHandler)
+		s.logger.Info("[WEB] Frontend handler mounted at /")
 	}
 
 	s.router = router

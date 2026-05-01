@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/your-username/go-mux-backend-template/pkg"
+	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
 // RequestIDMiddleware generates a UUID for every incoming request, attaches it to the

@@ -3,8 +3,8 @@ package auth
 import (
 	"net/http"
 
-	"github.com/your-username/go-mux-backend-template/internal/middlewares"
-	"github.com/your-username/go-mux-backend-template/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/internal/middlewares"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
 )
 
 // ---- Auth handlers -------------------------------------------------------------------

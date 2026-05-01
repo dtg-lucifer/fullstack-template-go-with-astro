@@ -4,11 +4,11 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  cmd = "go build -o ./tmp/main ."
+  cmd = "go build -tags dev -o ./tmp/main ."
   bin = "./tmp/main"
   full_bin = "./tmp/main -config config.yaml"
   include_ext = ["go", "yaml", "sql"]
-  exclude_dir = ["vendor", "tmp", "bin", "logs", "internal/db/repository"]
+  exclude_dir = ["vendor", "tmp", "bin", "logs", "web/node_modules", "web/dist", "server/internal/db/repository"]
   delay = 1000
   stop_on_error = true
   send_interrupt = true

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/your-username/go-mux-backend-template/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
 )
 
 // CORSMiddleware sets Access-Control-* headers based on the CORS_ORIGINS environment

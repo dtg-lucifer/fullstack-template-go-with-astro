@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/your-username/go-mux-backend-template/internal/utils"
-	"github.com/your-username/go-mux-backend-template/pkg"
+	"github.com/your-username/go-mux-backend-template/server/internal/utils"
+	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
 // contextKey is an unexported type for context keys to avoid collisions with other packages.
