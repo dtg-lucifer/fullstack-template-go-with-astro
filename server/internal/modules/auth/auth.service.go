@@ -8,25 +8,90 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/your-username/go-mux-backend-template/server/internal/core/events"
+	coreutils "github.com/your-username/go-mux-backend-template/server/internal/core/utils"
 	"github.com/your-username/go-mux-backend-template/server/internal/db/repository"
 	"github.com/your-username/go-mux-backend-template/server/internal/utils"
 	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
+// ── Service interface ──────────────────────────────────────────────────────────
+//
+// Declaring an interface for the service layer enables two things:
+//  1. The Controller depends on the interface, not the concrete type — making
+//     it easy to swap implementations (e.g. a mock in tests).
+//  2. WithDebug() can return a proxy that also satisfies the interface, giving
+//     us transparent method-level debug logging without touching handler code.
+
+// ServiceIface is the contract that AuthController depends on.
+// Every method mirrors the concrete Service method signature exactly.
+type ServiceIface interface {
+	Register(ctx context.Context, input RegisterInput, r *http.Request) utils.ApiResponse
+	Login(ctx context.Context, input LoginInput, r *http.Request) utils.ApiResponse
+	Me(ctx context.Context, uid string) utils.ApiResponse
+	RefreshToken(ctx context.Context, input RefreshInput) utils.ApiResponse
+}
+
+// ── Concrete service ───────────────────────────────────────────────────────────
+
 // Service holds the dependencies needed by all auth business logic.
+// It satisfies ServiceIface.
 type Service struct {
-	repo *repository.Queries
-	pool *pgxpool.Pool
+	repo *repository.Queries // sqlc-generated data access layer
 	bus  *events.Bus
 }
 
-func newService(pool *pgxpool.Pool, bus *events.Bus) *Service {
+// NewService creates a Service backed by the sqlc repository.
+// Use WithDebug instead of NewService when you want method-level debug logging.
+func NewService(pool *pgxpool.Pool, bus *events.Bus) *Service {
 	return &Service{
 		repo: repository.New(pool),
-		pool: pool,
 		bus:  bus,
 	}
 }
+
+// WithDebug wraps a new Service in a debug-logging proxy and returns it as
+// ServiceIface. Every method call will emit structured DEBUG log lines:
+//
+//	[AuthService.Register] --> START
+//	[AuthService.Register] <-- END   duration=3ms
+//
+// Drop-in replacement for NewService — the Controller always calls WithDebug.
+func WithDebug(pool *pgxpool.Pool, bus *events.Bus, logger *pkg.Logger) ServiceIface {
+	svc := NewService(pool, bus)
+	d := coreutils.NewDispatcher(svc, "AuthService", logger)
+	return &serviceDebugProxy{svc: svc, d: d}
+}
+
+// ── Debug proxy ────────────────────────────────────────────────────────────────
+
+// serviceDebugProxy implements ServiceIface by forwarding every call through
+// the Dispatcher, which handles timing and structured logging automatically.
+type serviceDebugProxy struct {
+	svc *Service
+	d   *coreutils.Dispatcher
+}
+
+func (p *serviceDebugProxy) Register(ctx context.Context, input RegisterInput, r *http.Request) utils.ApiResponse {
+	results := p.d.Call("Register", ctx, input, r)
+	return results[0].Interface().(utils.ApiResponse)
+}
+
+func (p *serviceDebugProxy) Login(ctx context.Context, input LoginInput, r *http.Request) utils.ApiResponse {
+	results := p.d.Call("Login", ctx, input, r)
+	return results[0].Interface().(utils.ApiResponse)
+}
+
+func (p *serviceDebugProxy) Me(ctx context.Context, uid string) utils.ApiResponse {
+	results := p.d.Call("Me", ctx, uid)
+	return results[0].Interface().(utils.ApiResponse)
+}
+
+func (p *serviceDebugProxy) RefreshToken(ctx context.Context, input RefreshInput) utils.ApiResponse {
+	results := p.d.Call("RefreshToken", ctx, input)
+	return results[0].Interface().(utils.ApiResponse)
+}
+
+// ── Business logic ─────────────────────────────────────────────────────────────
 
 // Register creates a new user account.
 func (s *Service) Register(ctx context.Context, input RegisterInput, r *http.Request) utils.ApiResponse {
@@ -145,6 +210,8 @@ func (s *Service) RefreshToken(_ context.Context, input RefreshInput) utils.ApiR
 
 	return utils.ApiSuccess("token refreshed", map[string]any{"access_token": newToken}, 200)
 }
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 func safeUser(u repository.User) map[string]any {
 	return map[string]any{

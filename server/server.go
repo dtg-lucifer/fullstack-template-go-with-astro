@@ -20,6 +20,7 @@ import (
 	"github.com/your-username/go-mux-backend-template/server/internal/core/events"
 	"github.com/your-username/go-mux-backend-template/server/internal/core/queue"
 	"github.com/your-username/go-mux-backend-template/server/internal/core/realtime"
+	"github.com/your-username/go-mux-backend-template/server/internal/core/workers"
 	"github.com/your-username/go-mux-backend-template/server/internal/db"
 	"github.com/your-username/go-mux-backend-template/server/internal/db/repository"
 	"github.com/your-username/go-mux-backend-template/server/internal/middlewares"
@@ -164,7 +165,7 @@ func (s *Server) setupQueue(ctx context.Context) error {
 	s.qmgr = mgr
 
 	if s.cfg.Workers.Process.Enabled && s.cfg.Workers.NotificationJobs.Enabled {
-		if err := s.qmgr.ConsumeWelcomeEmails(ctx, s.cfg.Workers.NotificationJobs.Concurrency, processWelcomeEmail(s.logger)); err != nil {
+		if err := s.qmgr.ConsumeWelcomeEmails(ctx, s.cfg.Workers.NotificationJobs.Concurrency, workers.WelcomeEmailHandler(s.logger)); err != nil {
 			return fmt.Errorf("starting email consumer: %w", err)
 		}
 		s.logger.Info("[QUEUE] Email job consumer started",
@@ -257,7 +258,7 @@ func (s *Server) setupRouter() {
 	}
 
 	apiRouter := router.PathPrefix(s.cfg.Server.APIPrefix).Subrouter()
-	modules.Register(apiRouter, s.pool, s.redis, s.bus, s.startTime)
+	modules.Register(apiRouter, s.pool, s.redis, s.bus, s.startTime, s.logger)
 
 	s.logger.Info("[ROUTES] Mounted under " + s.cfg.Server.APIPrefix)
 
@@ -334,14 +335,4 @@ func (s *Server) Shutdown() {
 	}
 
 	s.logger.Info("[SERVER] Shutdown complete")
-}
-
-// processWelcomeEmail is the handler called by the queue consumer for each
-// welcome email job. Replace the body with a real email send in production.
-func processWelcomeEmail(logger *pkg.Logger) func(queue.WelcomeEmailJob) error {
-	return func(job queue.WelcomeEmailJob) error {
-		// TODO: call your email service here, e.g. mailer.SendWelcome(job.Email)
-		logger.Info("[WORKER] Sending welcome email", "user_id", job.UserID, "email", job.Email)
-		return nil
-	}
 }
