@@ -8,37 +8,30 @@ import (
 	"github.com/your-username/go-mux-backend-template/server/internal/core/events"
 	"github.com/your-username/go-mux-backend-template/server/internal/middlewares"
 	"github.com/your-username/go-mux-backend-template/server/internal/utils"
-	"github.com/your-username/go-mux-backend-template/server/pkg"
 )
 
 // Controller owns the auth subrouter and all auth HTTP handlers.
 //
-// Architecture notes (mirroring the OOP pattern from the migration report):
+// Architecture notes:
 //   - Router is the only public field; it is mounted by the route registry.
-//   - The service dependency is injected as ServiceIface so the controller
-//     never depends on the concrete *Service type.
-//   - WithDebug is called in the constructor so every service method is
-//     automatically instrumented with debug logging.
+//   - The service dependency is injected as a concrete *Service.
 //   - Handler methods are regular methods (not closures) — `svc` is accessed
 //     via the receiver, which is idiomatic Go and avoids closure capture bugs.
 type Controller struct {
 	// Router is the subrouter for all /auth/* endpoints.
-	// Mount it in the route registry: apiRouter.PathPrefix("/auth").Handler(ctrl.Router)
+	// Mount it in the route registry: apiRouter.PathPrefix("/auth").Subrouter()
 	Router *mux.Router
 
-	svc  ServiceIface
+	svc  *Service
 	auth *middlewares.AuthMiddleware
 }
 
-// NewController creates an AuthController, wires its ServiceIface (with debug
-// logging enabled), and registers all routes.
-//
-// Equivalent to the TypeScript AuthController constructor that calls
-// AuthService.withDebug(...) and this.registerRoutes().
-func NewController(pool *pgxpool.Pool, bus *events.Bus, logger *pkg.Logger) *Controller {
+// NewController creates an AuthController, wires its Service, and registers
+// all routes on the provided subrouter.
+func NewController(router *mux.Router, pool *pgxpool.Pool, bus *events.Bus) *Controller {
 	c := &Controller{
-		Router: mux.NewRouter(),
-		svc:    WithDebug(pool, bus, logger),
+		Router: router,
+		svc:    NewService(pool, bus),
 		auth:   middlewares.NewAuthMiddleware(),
 	}
 	c.registerRoutes()

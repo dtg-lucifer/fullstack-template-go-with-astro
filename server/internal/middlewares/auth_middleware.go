@@ -37,7 +37,7 @@ func (am *AuthMiddleware) Guard(next http.Handler) http.Handler {
 			return
 		}
 
-		secret := utils.GetEnv("JWT_SECRET", "change-me-in-production")
+		secret := utils.GetEnv("JWT_SECRET", "change-me")
 		signer := pkg.NewTokenSigner(secret)
 
 		claims, err := signer.Verify(token)
@@ -73,7 +73,7 @@ func (am *AuthMiddleware) OptionalGuard(next http.Handler) http.Handler {
 			return
 		}
 
-		secret := utils.GetEnv("JWT_SECRET", "change-me-in-production")
+		secret := utils.GetEnv("JWT_SECRET", "change-me")
 		signer := pkg.NewTokenSigner(secret)
 
 		claims, err := signer.Verify(token)

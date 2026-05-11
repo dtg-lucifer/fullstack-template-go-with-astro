@@ -31,9 +31,9 @@ import (
 // Server owns every long-lived resource in the application.
 // A nil subsystem field means that subsystem is disabled via config.yaml.
 type Server struct {
-	cfg       *config.Config
-	logger    *pkg.Logger
-	startTime time.Time
+	cfg        *config.Config
+	logger     *pkg.Logger
+	startTime  time.Time
 	webHandler http.Handler // frontend handler; nil disables static file serving
 
 	pool    *pgxpool.Pool
@@ -254,11 +254,11 @@ func (s *Server) setupRouter() {
 		router.Use(rl.Middleware)
 	}
 	if s.cfg.Middlewares.Logger.Enabled {
-		router.Use(middlewares.LoggerMiddleware)
+		router.Use(middlewares.LoggerMiddleware(s.cfg.Server.Environment))
 	}
 
 	apiRouter := router.PathPrefix(s.cfg.Server.APIPrefix).Subrouter()
-	modules.Register(apiRouter, s.pool, s.redis, s.bus, s.startTime, s.logger)
+	modules.Register(apiRouter, s.pool, s.redis, s.bus, s.startTime)
 
 	s.logger.Info("[ROUTES] Mounted under " + s.cfg.Server.APIPrefix)
 
