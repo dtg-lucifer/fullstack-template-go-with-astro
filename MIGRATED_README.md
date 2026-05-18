@@ -127,66 +127,65 @@ Interactive docs are at `http://localhost:8080/docs`.
 ├── Makefile
 ├── .air.toml                        Hot reload config
 │
-├── server/
+├── config/
+│   └── config.go                    Config structs + YAML loader + env overrides
+│
+├── pkg/                             Shared utilities (no internal deps)
+│   ├── logger.go                    Dual-output slog wrapper (file + stdout)
+│   ├── jwt.go                       Token signing + verification
+│   ├── password.go                  bcrypt hash + compare
+│   └── env.go                       Env var helpers
+│
+├── internal/
 │   ├── server.go                    Wires all subsystems, lifecycle management
 │   │
-│   ├── config/
-│   │   └── config.go                Config structs + YAML loader + env overrides
+│   ├── core/
+│   │   ├── cache/                   Redis client wrapper
+│   │   ├── events/                  In-process domain event bus
+│   │   ├── queue/                   RabbitMQ producer + consumer manager
+│   │   ├── realtime/                WebSocket hub
+│   │   └── workers/                 Job handler functions (one file per job type)
 │   │
-│   ├── pkg/                         Shared utilities (no internal deps)
-│   │   ├── logger.go                Dual-output slog wrapper (file + stdout)
-│   │   ├── jwt.go                   Token signing + verification
-│   │   ├── password.go              bcrypt hash + compare
-│   │   └── env.go                   Env var helpers
+│   ├── db/
+│   │   ├── db.go                    pgxpool connection factory
+│   │   ├── migrations/              SQL migration files
+│   │   ├── queries/                 Hand-written SQL (sqlc input)
+│   │   └── repository/              sqlc-generated Go code — do not edit
+│   │       └── helpers.go           Hand-written helpers (StringToUUID, etc.)
 │   │
-│   └── internal/
-│       ├── core/
-│       │   ├── cache/               Redis client wrapper
-│       │   ├── events/              In-process domain event bus
-│       │   ├── queue/               RabbitMQ producer + consumer manager
-│       │   ├── realtime/            WebSocket hub
-│       │   ├── utils/               Shared utilities (Dispatcher / debug proxy)
-│       │   └── workers/             Job handler functions (one file per job type)
-│       │
-│       ├── db/
-│       │   ├── db.go                pgxpool connection factory
-│       │   ├── migrations/          SQL migration files
-│       │   ├── queries/             Hand-written SQL (sqlc input)
-│       │   └── repository/          sqlc-generated Go code — do not edit
-│       │       └── helpers.go       Hand-written helpers (StringToUUID, etc.)
-│       │
-│       ├── middlewares/             HTTP middleware
-│       │   ├── auth_middleware.go   JWT Guard + OptionalGuard + UIDFromContext
-│       │   ├── validate_middleware.go  Decode + validate JSON body → context
-│       │   ├── context.go           BodyFromContext[T], UIDFromContext
-│       │   ├── cors_middleware.go   CORS headers
-│       │   ├── logger_middleware.go HTTP access log
-│       │   ├── ratelimit_middleware.go  Per-IP sliding-window rate limiter
-│       │   ├── requestid_middleware.go  UUID per request → X-Request-ID
-│       │   └── timeout_middleware.go    Per-request context deadline
-│       │
-│       ├── modules/
-│       │   ├── routes.go            Central route registry
-│       │   ├── auth/
-│       │   │   ├── auth.schema.go   Input types + Validate() methods
-│       │   │   ├── auth.service.go  Business logic → ApiResponse
-│       │   │   └── auth.controller.go  Controller struct, routes, handler methods
-│       │   └── health/
-│       │       └── health.routes.go GET /health
-│       │
-│       └── utils/
-│           └── http.go              ApiResponse, SendResponse, HttpWriter
+│   ├── middlewares/                 HTTP middleware
+│   │   ├── auth_middleware.go       JWT Guard + OptionalGuard + UIDFromContext
+│   │   ├── validate_middleware.go   Decode + validate JSON body → context
+│   │   ├── context.go               BodyFromContext[T], UIDFromContext
+│   │   ├── cors_middleware.go       CORS headers
+│   │   ├── logger_middleware.go     HTTP access log
+│   │   ├── ratelimit_middleware.go  Per-IP sliding-window rate limiter
+│   │   ├── requestid_middleware.go  UUID per request → X-Request-ID
+│   │   └── timeout_middleware.go    Per-request context deadline
+│   │
+│   ├── modules/
+│   │   ├── routes.go                Central route registry
+│   │   ├── auth/
+│   │   │   ├── auth.schema.go       Input types + Validate() methods
+│   │   │   ├── auth.service.go      Business logic → ApiResponse
+│   │   │   └── auth.controller.go   Controller struct, routes, handler methods
+│   │   └── health/
+│   │       └── health.routes.go     GET /health
+│   │
+│   └── utils/
+│       └── http.go                  ApiResponse, SendResponse, HttpWriter
 │
 ├── docs/                            TypeSpec API documentation project
 │   ├── main.tsp                     Service metadata + imports
 │   ├── tspconfig.yaml               Emitter config (outputs ../openapi.yaml)
 │   ├── package.json                 TypeSpec npm dependencies
-│   └── modules/
-│       ├── common.tsp               Shared envelope + error models
-│       ├── auth.model.tsp           Auth request/response models
-│       ├── auth.route.tsp           Auth route definitions
-│       ├── health.model.tsp         Health check models
-│       └── health.route.tsp         Health route definitions
+│   ├── models/
+│   │   ├── common.tsp               Shared envelope + error models
+│   │   ├── auth.tsp                 Auth request/response models
+│   │   └── health.tsp               Health check models
+│   └── routes/
+│       ├── auth.tsp                 Auth route definitions
+│       └── health.tsp               Health route definitions
 │
 ├── scripts/
 │   └── rename-module.sh             Rename the Go module path across the project
@@ -298,9 +297,9 @@ The UI is available at `http://localhost:8080/docs` when `documentation.swagger.
 
 ### Adding docs for a new module
 
-1. `docs/modules/<name>.model.tsp` — request/response models (import `./common.tsp`)
-2. `docs/modules/<name>.route.tsp` — route interface (import `./<name>.model.tsp`)
-3. Add the route import to `docs/main.tsp`
+1. `docs/models/<name>.tsp` — request/response models
+2. `docs/routes/<name>.tsp` — route interface, imports from `../models/<name>.tsp`
+3. Add both imports to `docs/main.tsp`
 4. `make docs`
 
 ---
@@ -374,9 +373,5 @@ queue:
 
 realtime:
   websocket:
-    enabled: false
-
-documentation:
-  swagger:
     enabled: false
 ```

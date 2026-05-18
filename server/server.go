@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	scalargo "github.com/bdpiprava/scalar-go"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -78,6 +79,7 @@ func (s *Server) Setup(ctx context.Context) error {
 
 	s.setupEventHandlers()
 	s.setupRouter()
+	s.setupDocs()
 
 	s.logger.Info("[SERVER] Setup completed successfully")
 	return nil
@@ -284,6 +286,69 @@ func (s *Server) setupRouter() {
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+}
+
+// setupDocs mounts the Scalar interactive API UI at the configured path.
+// It uses the scalar-go library (github.com/bdpiprava/scalar-go) to render
+// the UI — no CDN dependency, no manual HTML templating.
+//
+// Two routes are mounted:
+//   - GET /docs            → Scalar interactive UI
+//   - GET /docs/openapi.yaml → raw OpenAPI spec (for external tooling)
+//
+// Skipped entirely when documentation.swagger.enabled is false in config.yaml.
+// If openapi.yaml does not exist yet, both routes return a 404 with a hint to
+// run "make docs".
+func (s *Server) setupDocs() {
+	if !s.cfg.Documentation.Swagger.Enabled {
+		s.logger.Info("[DOCS] API documentation UI disabled in config.yaml")
+		return
+	}
+
+	docPath := s.cfg.Documentation.Swagger.Path
+	openapiFile := s.cfg.Documentation.Swagger.OpenAPIFile
+
+	// Serve the raw openapi.yaml so external tools (Postman, etc.) can fetch it.
+	s.router.HandleFunc(docPath+"/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		data, err := os.ReadFile(openapiFile)
+		if err != nil {
+			http.Error(w, "openapi.yaml not found — run 'make docs' to generate it", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/yaml")
+		w.WriteHeader(http.StatusOK)
+		w.Write(data) //nolint:errcheck
+	})
+
+	// Serve the Scalar UI using the scalar-go library.
+	// The spec is read from disk on every request so a "make docs" reload is
+	// reflected immediately without restarting the server.
+	s.router.HandleFunc(docPath, func(w http.ResponseWriter, r *http.Request) {
+		spec, err := os.ReadFile(openapiFile)
+		if err != nil {
+			http.Error(w, "openapi.yaml not found — run 'make docs' to generate it", http.StatusNotFound)
+			return
+		}
+
+		html, err := scalargo.NewV2(
+			scalargo.WithSpecBytes(spec),
+			scalargo.WithTheme(scalargo.ThemePurple),
+		)
+		if err != nil {
+			http.Error(w, "failed to render docs: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, html)
+	})
+
+	s.logger.Info("[DOCS] Scalar UI mounted",
+		"ui", docPath,
+		"spec", docPath+"/openapi.yaml",
+		"openapi_file", openapiFile,
+	)
 }
 
 // Start begins listening for HTTP connections. It blocks until SIGINT or SIGTERM

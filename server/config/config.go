@@ -16,15 +16,34 @@ import (
 
 // Config is the root structure populated from config.yaml.
 type Config struct {
-	Server      Server      `yaml:"server"`
-	Security    Security    `yaml:"security"`
-	Database    Database    `yaml:"database"`
-	Redis       Redis       `yaml:"redis"`
-	Logging     Logging     `yaml:"logging"`
-	Middlewares Middlewares `yaml:"middlewares"`
-	Realtime    Realtime    `yaml:"realtime"`
-	Queue       Queue       `yaml:"queue"`
-	Workers     Workers     `yaml:"workers"`
+	Server        Server        `yaml:"server"`
+	Security      Security      `yaml:"security"`
+	Database      Database      `yaml:"database"`
+	Redis         Redis         `yaml:"redis"`
+	Logging       Logging       `yaml:"logging"`
+	Middlewares   Middlewares   `yaml:"middlewares"`
+	Realtime      Realtime      `yaml:"realtime"`
+	Queue         Queue         `yaml:"queue"`
+	Workers       Workers       `yaml:"workers"`
+	Documentation Documentation `yaml:"documentation"`
+}
+
+// ── Documentation ─────────────────────────────────────────────────────────────
+
+// Documentation controls the Scalar interactive API UI.
+type Documentation struct {
+	Swagger SwaggerConfig `yaml:"swagger"`
+}
+
+// SwaggerConfig holds settings for the Scalar UI endpoint.
+type SwaggerConfig struct {
+	// Enabled controls whether the /docs UI is mounted at all.
+	Enabled bool `yaml:"enabled"`
+	// Path is the URL path where the Scalar UI is served, e.g. "/docs".
+	Path string `yaml:"path"`
+	// OpenAPIFile is the path to the generated openapi.yaml file, relative to
+	// the working directory (i.e. the project root). Defaults to "openapi.yaml".
+	OpenAPIFile string `yaml:"openapi_file"`
 }
 
 // ── Server ────────────────────────────────────────────────────────────────────
@@ -268,6 +287,12 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Redis.PoolSize == 0 {
 		cfg.Redis.PoolSize = 10
+	}
+	if cfg.Documentation.Swagger.Path == "" {
+		cfg.Documentation.Swagger.Path = "/docs"
+	}
+	if cfg.Documentation.Swagger.OpenAPIFile == "" {
+		cfg.Documentation.Swagger.OpenAPIFile = "openapi.yaml"
 	}
 }
 

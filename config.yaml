@@ -91,3 +91,13 @@ workers:
   notification_jobs:
     enabled: true
     concurrency: 5
+
+# ── API Documentation (Scalar UI) ─────────────────────────────────────────────
+# Set enabled: false to disable the /docs UI entirely.
+# openapi_file is relative to the project root (where the binary runs from).
+# Run "make docs" to regenerate openapi.yaml from the TypeSpec sources in docs/.
+documentation:
+  swagger:
+    enabled: true
+    path: /docs
+    openapi_file: openapi.yaml

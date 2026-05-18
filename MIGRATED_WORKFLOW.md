@@ -41,9 +41,9 @@ This document explains every module, component, and subsystem in this template �
 │  Global middleware chain:                                    │
 │  RequestID → CORS → RateLimit → Logger                       │
 │                                                              │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐    │
-│  │ GET /health │  │ /auth/*      │  │  (your modules)  │    │
-│  └─────────────┘  └──────┬───────┘  └──────────────────┘    │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐     │
+│  │ GET /health │  │ /auth/*      │  │  (your modules)  │     │
+│  └─────────────┘  └──────┬───────┘  └──────────────────┘     │
 │                          │ ctrl.Router (subrouter)           │
 └──────────────────────────┼───────────────────────────────────┘
                            │
@@ -79,57 +79,56 @@ This document explains every module, component, and subsystem in this template �
 ├── openapi.yaml                     Generated — do not edit (make docs)
 ├── Makefile
 │
-├── server/
+├── config/
+│   └── config.go                    Config structs + loader
+│
+├── pkg/                             Shared utilities (no internal deps)
+│   ├── logger.go                    Dual-output slog wrapper
+│   ├── jwt.go                       Token signing + verification
+│   ├── password.go                  bcrypt helpers
+│   └── env.go                       Env var helpers
+│
+├── internal/
 │   ├── server.go                    Wires all subsystems, lifecycle mgmt
 │   │
-│   ├── config/
-│   │   └── config.go                Config structs + loader
+│   ├── core/
+│   │   ├── cache/                   Redis client wrapper
+│   │   ├── events/                  In-process domain event bus
+│   │   ├── queue/                   RabbitMQ producer + consumer
+│   │   ├── realtime/                WebSocket hub
+│   │   └── workers/                 Job handler functions (one file per job)
 │   │
-│   ├── pkg/                         Shared utilities (no internal deps)
-│   │   ├── logger.go                Dual-output slog wrapper
-│   │   ├── jwt.go                   Token signing + verification
-│   │   ├── password.go              bcrypt helpers
-│   │   └── env.go                   Env var helpers
+│   ├── db/
+│   │   ├── db.go                    pgxpool connection helper
+│   │   ├── migrations/              golang-migrate SQL files
+│   │   ├── queries/                 Hand-written SQL (sqlc input)
+│   │   └── repository/              sqlc-generated Go code — do not edit
 │   │
-│   └── internal/
-│       ├── core/
-│       │   ├── cache/               Redis client wrapper
-│       │   ├── events/              In-process domain event bus
-│       │   ├── queue/               RabbitMQ producer + consumer
-│       │   ├── realtime/            WebSocket hub
-│       │   ├── utils/               Dispatcher (debug proxy)
-│       │   └── workers/             Job handler functions (one file per job)
-│       │
-│       ├── db/
-│       │   ├── db.go                pgxpool connection helper
-│       │   ├── migrations/          golang-migrate SQL files
-│       │   ├── queries/             Hand-written SQL (sqlc input)
-│       │   └── repository/          sqlc-generated Go code — do not edit
-│       │
-│       ├── middlewares/             HTTP middleware (auth, cors, logger, …)
-│       │
-│       ├── modules/
-│       │   ├── routes.go            Central route registry
-│       │   ├── auth/
-│       │   │   ├── auth.schema.go   Input types + Validate() methods
-│       │   │   ├── auth.service.go  Business logic → ApiResponse
-│       │   │   └── auth.controller.go  Controller struct, routes, handlers
-│       │   └── health/
-│       │       └── health.routes.go Health check endpoint
-│       │
-│       └── utils/
-│           └── http.go              ApiResponse, SendResponse, HttpWriter
+│   ├── middlewares/                 HTTP middleware (auth, cors, logger, …)
+│   │
+│   ├── modules/
+│   │   ├── routes.go                Central route registry
+│   │   ├── auth/
+│   │   │   ├── auth.schema.go       Input types + Validate() methods
+│   │   │   ├── auth.service.go      Business logic → ApiResponse
+│   │   │   └── auth.controller.go   Controller struct, routes, handlers
+│   │   └── health/
+│   │       └── health.routes.go     Health check endpoint
+│   │
+│   └── utils/
+│       └── http.go                  ApiResponse, SendResponse, HttpWriter
 │
 └── docs/                            TypeSpec API documentation project
     ├── main.tsp                     Entry point — service metadata + imports
     ├── tspconfig.yaml               Emitter config (outputs ../openapi.yaml)
     ├── package.json                 TypeSpec npm dependencies
-    └── modules/
-        ├── common.tsp               Shared envelope + error models
-        ├── auth.model.tsp           Auth request/response models
-        ├── auth.route.tsp           Auth route definitions
-        ├── health.model.tsp         Health check models
-        └── health.route.tsp         Health route definitions
+    ├── models/
+    │   ├── common.tsp               Shared envelope + error models
+    │   ├── auth.tsp                 Auth request/response models
+    │   └── health.tsp               Health check models
+    └── routes/
+        ├── auth.tsp                 Auth route definitions
+        └── health.tsp               Health route definitions
 ```
 
 ---
@@ -261,7 +260,7 @@ func (s *Service) DoThing(ctx context.Context, input ThingInput) utils.ApiRespon
 func Register(apiRouter *mux.Router, pool *pgxpool.Pool, redis cache.Cache, bus *events.Bus, startTime time.Time, logger *pkg.Logger) {
     health.RegisterRoutes(apiRouter, pool, redis, startTime)
 
-    authCtrl := auth.NewController(pool, bus, logger)
+    authCtrl := auth.NewController(pool, bus)
     apiRouter.PathPrefix("/auth").Handler(authCtrl.Router)
 }
 ```
@@ -459,7 +458,7 @@ The hub subscribes to the domain event bus and forwards relevant events to conne
 
 ## 12. API Documentation (TypeSpec + Scalar)
 
-**Files:** `docs/`, `openapi.yaml`, `server/server.go → setupDocs()`
+**Files:** `docs/`, `openapi.yaml`, `internal/server.go → setupDocs()`
 
 The API is documented using [TypeSpec](https://typespec.io/). TypeSpec compiles to `openapi.yaml` at the project root, which is then served as an interactive [Scalar](https://scalar.com/) UI.
 
@@ -469,21 +468,20 @@ The API is documented using [TypeSpec](https://typespec.io/). TypeSpec compiles 
 docs/
 ├── main.tsp              Service metadata, server URL, imports
 ├── tspconfig.yaml        Emitter config → outputs ../openapi.yaml
-├── package.json          TypeSpec npm dependencies
-└── modules/
-    ├── common.tsp        Shared: ApiSuccess<T>, ApiError, error models
-    ├── auth.model.tsp    Auth: SafeUser, request bodies, response shapes
-    ├── auth.route.tsp    Auth route definitions (imports auth.model.tsp)
-    ├── health.model.tsp  Health: DatabaseStatus, MemoryStats, HealthData
-    └── health.route.tsp  Health route definitions (imports health.model.tsp)
+├── models/
+│   ├── common.tsp        Shared: ApiSuccess<T>, ApiError, error models
+│   ├── auth.tsp          Auth: SafeUser, request bodies, response shapes
+│   └── health.tsp        Health: DatabaseStatus, MemoryStats, HealthData
+└── routes/
+    ├── auth.tsp          Auth route definitions (imports models/auth.tsp)
+    └── health.tsp        Health route definitions (imports models/health.tsp)
 ```
 
-**Rule:** each module owns its own `.model.tsp` and `.route.tsp` files inside `docs/modules/`. `common.tsp` holds only the shared `ApiSuccess<T>` and `ApiError` envelopes.
+**Rule:** route files contain only interface definitions. All models live in `docs/models/`.
 
 ### Workflow
 
 ```bash
-make install-docs  # one-time: install TypeSpec npm dependencies
 make docs          # compile TypeSpec → openapi.yaml
 make dev           # compile docs first, then start server with hot reload
 make build         # compile docs first, then build binary
@@ -499,27 +497,20 @@ documentation:
     openapi_file: openapi.yaml
 ```
 
-Two routes are mounted by `setupDocs()`:
-
-| Path | Description |
-|---|---|
-| `/docs` | Scalar interactive UI (HTML page, loads spec from CDN) |
-| `/docs/openapi.yaml` | Raw OpenAPI 3.0 spec file |
-
 `openapi.yaml` is generated — it is listed in `.gitignore` and should never be edited by hand.
 
 ### Adding docs for a new module
 
-1. Create `docs/modules/<name>.model.tsp` — define all request/response models (import `./common.tsp`)
-2. Create `docs/modules/<name>.route.tsp` — define the interface (import `./<name>.model.tsp`)
-3. Add the route import to `docs/main.tsp`
+1. Create `docs/models/<name>.tsp` — define all request/response models
+2. Create `docs/routes/<name>.tsp` — define the interface, import from `../models/<name>.tsp`
+3. Add both imports to `docs/main.tsp`
 4. `make docs` to regenerate `openapi.yaml`
 
 ---
 
 ## 13. Configuration System
 
-**Files:** `server/config/config.go`, `config.yaml`, `.env`
+**Files:** `config/config.go`, `config.yaml`, `.env`
 
 **Two-layer config:**
 
@@ -561,7 +552,7 @@ config.yaml     static, committed, non-secret settings
 
 ## 14. Logging System
 
-**Files:** `server/pkg/logger.go`
+**Files:** `pkg/logger.go`
 
 ```
 pkg.Logger
@@ -628,7 +619,7 @@ utils.SendResponse(w, c.svc.DoThing(r.Context(), input))
 
 ## 16. Graceful Shutdown
 
-**File:** `server/server.go`
+**File:** `internal/server.go`
 
 ```
 SIGINT / SIGTERM received
@@ -664,7 +655,7 @@ SIGINT / SIGTERM received
    ctrl := name.NewController(pool, bus)
    apiRouter.PathPrefix("/name").Handler(ctrl.Router)
    ```
-7. **Docs** → `docs/modules/<name>.model.tsp` + `docs/modules/<name>.route.tsp`, import the route file in `docs/main.tsp`
+7. **Docs** → `docs/models/<name>.tsp` + `docs/routes/<name>.tsp`, import in `docs/main.tsp`
 8. **Regenerate docs** → `make docs`
 
 ### New migration checklist

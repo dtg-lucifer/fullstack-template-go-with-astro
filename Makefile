@@ -5,6 +5,7 @@ BIN_DIR     := ./bin
 BIN_FILE    := $(BIN_DIR)/$(APP_NAME)
 LOGS_DIR    := ./logs
 WEB_DIR     := ./web
+DOCS_DIR    := ./docs
 
 ## ── Tools ─────────────────────────────────────────────────────────────────────
 GO              := go
@@ -12,6 +13,7 @@ SQLC            := sqlc
 GOLANGCI_LINT   := golangci-lint
 MIGRATE         := migrate
 AIR             := air
+TSP             := $(DOCS_DIR)/node_modules/.bin/tsp
 
 ## ── DB config (override via env or .env) ──────────────────────────────────────
 DB_URL          ?= postgres://postgres:postgres@localhost:5432/app_db?sslmode=disable
@@ -33,6 +35,11 @@ help: ## Show this help
 install: install-sqlc install-air install-migrate install-lint ## Install all dev tools
 	@echo ">> All tools installed."
 
+.PHONY: install-docs
+install-docs: ## Install TypeSpec npm dependencies (requires Node.js + npm/bun)
+	@echo ">> Installing TypeSpec dependencies…"
+	@cd $(DOCS_DIR) && pnpm install
+	@echo ">> TypeSpec dependencies installed."
 .PHONY: install-sqlc
 install-sqlc: ## Install sqlc
 	@echo ">> Installing sqlc…"
@@ -54,10 +61,21 @@ install-lint: ## Install golangci-lint
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
 		| sh -s -- -b $(go env GOPATH)/bin v2.11.4
 
+# ── API Docs (TypeSpec → OpenAPI) ─────────────────────────────────────────────
+.PHONY: docs
+docs: ## Compile TypeSpec project and generate openapi.yaml at the root.
+	@echo ">> Compiling TypeSpec → openapi.yaml…"
+	@$(TSP) compile $(DOCS_DIR)/main.tsp
+	@echo ">> openapi.yaml generated."
+
+.PHONY: docs-watch
+docs-watch: ## Watch TypeSpec files and recompile on change (requires tsp watch support).
+	@echo ">> Watching TypeSpec files…"
+	@$(TSP) compile $(DOCS_DIR)/main.tsp --watch
 # ── Build ──────────────────────────────────────────────────────────────────────
-# Full build: compile the frontend first, then embed it into the Go binary.
+# Full build: compile docs + frontend first, then embed into the Go binary.
 .PHONY: build
-build: build-web build-server ## Build frontend + backend binary
+build: docs build-web build-server ## Compile docs + frontend + backend binary
 	@echo ">> Single binary ready: $(BIN_FILE)"
 
 .PHONY: build-server
@@ -75,13 +93,13 @@ build-web: ## Build Astro frontend
 
 # ── Run ────────────────────────────────────────────────────────────────────────
 .PHONY: run
-run: build ## Build then run the app
+run: docs build ## Compile docs → build → run the app
 	@echo ">> Running $(APP_NAME)…"
 	$(BIN_FILE)
 
 # ── Dev (hot reload via Air) ───────────────────────────────────────────────────
 .PHONY: dev
-dev: ## Run with hot reload via air
+dev: docs ## Compile docs then run with hot reload via Air
 	@$(AIR)
 
 # ── Test ───────────────────────────────────────────────────────────────────────
