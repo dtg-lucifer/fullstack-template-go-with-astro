@@ -1,103 +1,103 @@
 server:
-  host: localhost
-  port: 8080
-  api_prefix: /api/v1
-  environment: development
-  tls:
-    enabled: false
-    cert_file: ""
-    key_file: ""
+    host: localhost
+    port: 8080
+    api_prefix: /api/v1
+    environment: development
+    tls:
+        enabled: false
+        cert_file: ""
+        key_file: ""
 
 security:
-  helmet:
-    enabled: true
-    content_security_policy: true
-  cors:
-    enabled: true
-    origins:
-      - http://localhost:3000
-      - http://localhost:5173
-  rate_limit:
-    enabled: true
-    window_seconds: 900   # 15 minutes
-    max_requests: 100
-    skip_localhost: true
+    helmet:
+        enabled: true
+        content_security_policy: true
+    cors:
+        enabled: true
+        origins:
+            - http://localhost:3000
+            - http://localhost:5173
+    rate_limit:
+        enabled: true
+        window_seconds: 900 # 15 minutes
+        max_requests: 100
+        skip_localhost: true
 
 database:
-  host: localhost
-  port: 5432
-  user: postgres
-  password: postgres
-  name: app_db
-  ssl_mode: disable
-  pool_size: 10
-  connection_timeout_ms: 10000
-  idle_timeout_ms: 30000
+    host: localhost
+    port: 5432
+    user: postgres
+    password: postgres
+    name: app_db
+    ssl_mode: disable
+    pool_size: 10
+    connection_timeout_ms: 10000
+    idle_timeout_ms: 30000
 
 logging:
-  # Console minimum level: debug | info | warn | error
-  # File transports always capture everything.
-  level: info
-  format: text          # text | json
-  enable_colors: true
-  log_requests: true
-  log_errors: true
+    # Console minimum level: debug | info | warn | error
+    # File transports always capture everything.
+    level: info
+    format: text # text | json
+    enable_colors: true
+    log_requests: true
+    log_errors: true
 
 # ── Redis ─────────────────────────────────────────────────────────────────────
 # Set enabled: false to run without Redis (no REDIS_ADDR required).
 redis:
-  enabled: true
-  host: localhost
-  port: 6379
-  password: ""
-  db: 0
-  pool_size: 10
+    enabled: true
+    host: localhost
+    port: 6379
+    password: ""
+    db: 0
+    pool_size: 10
 middlewares:
-  request_id:
-    enabled: true
-    header_name: X-Request-ID
-  body_parser:
-    enabled: true
-    json_limit_bytes: 10485760    # 10 MB
-    max_body_size_bytes: 10485760
-  dependency_injection:
-    enabled: true
-  logger:
-    enabled: true
+    request_id:
+        enabled: true
+        header_name: X-Request-ID
+    body_parser:
+        enabled: true
+        json_limit_bytes: 10485760 # 10 MB
+        max_body_size_bytes: 10485760
+    dependency_injection:
+        enabled: true
+    logger:
+        enabled: true
 
 # ── Realtime (WebSocket) ──────────────────────────────────────────────────────
 # Set enabled: false to run without WebSocket support entirely.
 realtime:
-  websocket:
-    enabled: true
-    path: /ws
-    read_buffer_size: 1024
-    write_buffer_size: 1024
+    websocket:
+        enabled: true
+        path: /ws
+        read_buffer_size: 1024
+        write_buffer_size: 1024
 
 # ── Queue (RabbitMQ) ──────────────────────────────────────────────────────────
 # Set enabled: false to run without RabbitMQ (no AMQP_URL required).
 queue:
-  rabbitmq:
-    enabled: true
-    default_attempts: 3
-    default_backoff: 1s
+    rabbitmq:
+        enabled: true
+        default_attempts: 3
+        default_backoff: 1s
 
 # ── Workers ───────────────────────────────────────────────────────────────────
 # process.enabled: false  → worker goroutines never start (useful in API-only mode)
 # notification_jobs.enabled: false → email jobs are skipped even if process is enabled
 workers:
-  process:
-    enabled: true
-  notification_jobs:
-    enabled: true
-    concurrency: 5
+    process:
+        enabled: true
+    notification_jobs:
+        enabled: true
+        concurrency: 5
 
 # ── API Documentation (Scalar UI) ─────────────────────────────────────────────
 # Set enabled: false to disable the /docs UI entirely.
 # openapi_file is relative to the project root (where the binary runs from).
 # Run "make docs" to regenerate openapi.yaml from the TypeSpec sources in docs/.
 documentation:
-  swagger:
-    enabled: true
-    path: /docs
-    openapi_file: openapi.yaml
+    swagger:
+        enabled: true
+        path: /docs
+        openapi_file: openapi.yaml
